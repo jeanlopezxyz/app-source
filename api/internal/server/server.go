@@ -23,6 +23,7 @@ type ProductStore interface {
 // session 8 is visible in the browser. Unknown versions are gray.
 var versionColors = map[string]string{
 	"1.0.0": "#2563eb", // blue
+	"1.1.0": "#16a34a", // green
 }
 
 const defaultColor = "#6b7280"

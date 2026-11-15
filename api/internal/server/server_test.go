@@ -85,6 +85,9 @@ func TestColorFor(t *testing.T) {
 	if got := ColorFor("v1.0.0"); got != "#2563eb" {
 		t.Errorf("ColorFor(v1.0.0) = %s", got)
 	}
+	if got := ColorFor("1.1.0"); got != "#16a34a" {
+		t.Errorf("ColorFor(1.1.0) = %s", got)
+	}
 	if got := ColorFor("dev"); got != defaultColor {
 		t.Errorf("ColorFor(dev) = %s, want default", got)
 	}
