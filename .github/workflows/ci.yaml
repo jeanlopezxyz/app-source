@@ -1,0 +1,126 @@
+# CI de catalogo:
+# - En cada push a main y en cada pull request: tests de la API.
+# - En cada tag vX.Y.Z: tests y publicación de las imágenes en GHCR con la versión X.Y.Z.
+# El CI publica imágenes; quien despliega es Argo CD leyendo app-gitops.
+name: ci
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: api
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: api/go.mod
+          cache-dependency-path: api/go.sum
+      - name: go vet
+        run: go vet ./...
+      - name: go test
+        run: go test -race ./...
+
+  images:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      fail-fast: true
+      matrix:
+        component: [api, frontend]
+    outputs:
+      version: ${{ steps.meta.outputs.version }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: docker/setup-buildx-action@v4
+
+      - uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # Tag vX.Y.Z -> imagen X.Y.Z. Las etiquetas y anotaciones OCI incluyen
+      # org.opencontainers.image.source, que enlaza el paquete con este repo.
+      - id: meta
+        uses: docker/metadata-action@v6
+        env:
+          DOCKER_METADATA_ANNOTATIONS_LEVELS: manifest,index
+        with:
+          images: ghcr.io/${{ github.repository_owner }}/catalogo-${{ matrix.component }}
+          tags: type=semver,pattern={{version}}
+          labels: |
+            org.opencontainers.image.title=catalogo-${{ matrix.component }}
+            org.opencontainers.image.description=catalogo ${{ matrix.component }} del curso Argo CD de cero a producción
+
+      # Las etapas de compilación corren en la arquitectura del runner y
+      # compilan en cruzado, así que arm64 no necesita QEMU.
+      - uses: docker/build-push-action@v7
+        with:
+          context: ${{ matrix.component }}
+          file: ${{ matrix.component }}/Containerfile
+          platforms: linux/amd64,linux/arm64
+          push: true
+          provenance: false
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          annotations: ${{ steps.meta.outputs.annotations }}
+          build-args: |
+            VERSION=${{ steps.meta.outputs.version }}
+            COMMIT=${{ github.sha }}
+          cache-from: type=gha,scope=${{ matrix.component }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.component }}
+
+  # Sesión 8 (laboratorio 8): el CI actualiza Git, no el clúster.
+  # Desactivado: solo corre si se crea la variable de repositorio
+  # UPDATE_GITOPS=true y el secret GITOPS_TOKEN (un fine-grained token con
+  # "Contents: read and write" solo sobre el repo app-gitops del alumno).
+  # Variable opcional GITOPS_REPO (por defecto <owner>/app-gitops).
+  update-gitops:
+    if: startsWith(github.ref, 'refs/tags/v') && vars.UPDATE_GITOPS == 'true'
+    needs: images
+    runs-on: ubuntu-latest
+    env:
+      VERSION: ${{ needs.images.outputs.version }}
+      OWNER: ${{ github.repository_owner }}
+      GITOPS_REPO: ${{ vars.GITOPS_REPO || format('{0}/app-gitops', github.repository_owner) }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          repository: ${{ env.GITOPS_REPO }}
+          token: ${{ secrets.GITOPS_TOKEN }}
+          path: app-gitops
+
+      - name: Actualizar la imagen en el overlay dev
+        working-directory: app-gitops/apps/catalogo/overlays/dev
+        run: |
+          kustomize edit set image \
+            "ghcr.io/${OWNER}/catalogo-api=ghcr.io/${OWNER}/catalogo-api:${VERSION}" \
+            "ghcr.io/${OWNER}/catalogo-frontend=ghcr.io/${OWNER}/catalogo-frontend:${VERSION}"
+          git diff --stat
+
+      - name: Commit y push
+        working-directory: app-gitops
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -am "chore(dev): deploy catalogo ${VERSION}"
+          git push
