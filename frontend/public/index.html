@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Catálogo · Argo CD de cero a producción</title>
+  <link rel="stylesheet" href="styles.css">
+  <script src="config.js"></script>
+  <script src="app.js" defer></script>
+</head>
+<body>
+  <header id="banner">
+    <div class="wrap">
+      <h1>Catálogo</h1>
+      <p class="versions">
+        <span>API <strong id="api-version">…</strong></span>
+        <span>Frontend <strong id="frontend-version">…</strong></span>
+      </p>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <section aria-labelledby="products-title">
+      <h2 id="products-title">Productos</h2>
+      <p id="status" role="status">Cargando productos…</p>
+      <ul id="products" class="grid"></ul>
+    </section>
+
+    <section aria-labelledby="history-title">
+      <h2 id="history-title">Versión de la API en las últimas peticiones</h2>
+      <p class="hint">Cada punto es una llamada a <code>/api/version</code>. Durante un canary verás colores mezclados.</p>
+      <ol id="history" class="history"></ol>
+    </section>
+  </main>
+</body>
+</html>
