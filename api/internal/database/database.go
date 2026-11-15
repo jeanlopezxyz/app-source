@@ -23,6 +23,7 @@ type Product struct {
 	Name        string `json:"name"`
 	Description string `json:"description"`
 	PriceCents  int64  `json:"price_cents"`
+	Stock       int64  `json:"stock"`
 }
 
 // Store wraps the connection pool.
@@ -85,13 +86,13 @@ func (s *Store) Ping(ctx context.Context) error {
 // ListProducts returns the catalog ordered by id.
 func (s *Store) ListProducts(ctx context.Context) ([]Product, error) {
 	rows, err := s.pool.Query(ctx,
-		"SELECT id, sku, name, description, price_cents FROM products ORDER BY id")
+		"SELECT id, sku, name, description, price_cents, COALESCE(stock, 0) FROM products ORDER BY id")
 	if err != nil {
 		return nil, fmt.Errorf("query products: %w", err)
 	}
 	return pgx.CollectRows(rows, func(row pgx.CollectableRow) (Product, error) {
 		var p Product
-		err := row.Scan(&p.ID, &p.SKU, &p.Name, &p.Description, &p.PriceCents)
+		err := row.Scan(&p.ID, &p.SKU, &p.Name, &p.Description, &p.PriceCents, &p.Stock)
 		return p, err
 	})
 }
