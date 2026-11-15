@@ -58,6 +58,7 @@ Las publica el CI al empujar un tag `vX.Y.Z`; la imagen se etiqueta `X.Y.Z` (sin
 | Versión | Color | Cambios |
 |---|---|---|
 | `1.0.0` | Azul `#2563eb` | Primera versión |
+| `1.1.0` | Verde `#16a34a` | Columna `stock` en los productos. La migración la añade como columna opcional, así la API `1.0.0` sigue funcionando mientras conviven las dos versiones durante el canary |
 
 ## Construir y probar en local
 
