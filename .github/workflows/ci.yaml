@@ -102,19 +102,23 @@ jobs:
       VERSION: ${{ needs.images.outputs.version }}
       OWNER: ${{ github.repository_owner }}
       GITOPS_REPO: ${{ vars.GITOPS_REPO || format('{0}/app-gitops', github.repository_owner) }}
+      # Nombre de las imágenes en la base de app-gitops; kustomize edit set image lo busca
+      # tal cual, así que en un fork no puede ser ghcr.io/<owner>.
+      BASE_IMAGE: ${{ vars.BASE_IMAGE || 'ghcr.io/jeanlopezxyz' }}
     steps:
+      # Deploy key con escritura solo en app-gitops (secret GITOPS_DEPLOY_KEY).
       - uses: actions/checkout@v7
         with:
           repository: ${{ env.GITOPS_REPO }}
-          token: ${{ secrets.GITOPS_TOKEN }}
+          ssh-key: ${{ secrets.GITOPS_DEPLOY_KEY }}
           path: app-gitops
 
       - name: Actualizar la imagen en el overlay dev
         working-directory: app-gitops/apps/catalogo/overlays/dev
         run: |
           kustomize edit set image \
-            "ghcr.io/${OWNER}/catalogo-api=ghcr.io/${OWNER}/catalogo-api:${VERSION}" \
-            "ghcr.io/${OWNER}/catalogo-frontend=ghcr.io/${OWNER}/catalogo-frontend:${VERSION}"
+            "${BASE_IMAGE}/catalogo-api=ghcr.io/${OWNER}/catalogo-api:${VERSION}" \
+            "${BASE_IMAGE}/catalogo-frontend=ghcr.io/${OWNER}/catalogo-frontend:${VERSION}"
           git diff --stat
 
       - name: Commit y push

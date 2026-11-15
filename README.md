@@ -94,7 +94,7 @@ docker rm -f catalogo-api catalogo-db && docker network rm catalogo && rm -rf "$
 
 - **Push a `main` y pull requests:** `go vet` y `go test -race`.
 - **Tag `vX.Y.Z`:** tests y, si pasan, imágenes `linux/amd64` y `linux/arm64` publicadas en GHCR con `GITHUB_TOKEN`. Las imágenes llevan `org.opencontainers.image.source`, que enlaza el paquete con este repo.
-- **`update-gitops` (sesión 8, desactivado):** actualiza la imagen en `apps/catalogo/overlays/dev` de `app-gitops` con `kustomize edit set image` y un commit. Se activa creando la variable de repositorio `UPDATE_GITOPS=true` y el secret `GITOPS_TOKEN` (fine-grained token con permiso de escritura solo en `app-gitops`).
+- **`update-gitops` (sesión 8, desactivado):** actualiza la imagen en `apps/catalogo/overlays/dev` de `app-gitops` con `kustomize edit set image` y un commit. Se activa con la variable de repositorio `UPDATE_GITOPS=true` y el secret `GITOPS_DEPLOY_KEY`: la clave privada de una deploy key con escritura solo en `app-gitops`. Variables opcionales: `GITOPS_REPO` (`<dueño>/<repo>`, por defecto `<owner>/app-gitops`) y `BASE_IMAGE` (el prefijo de las imágenes en la base de `app-gitops`, por defecto `ghcr.io/jeanlopezxyz`).
 
 Publicar una versión:
 
